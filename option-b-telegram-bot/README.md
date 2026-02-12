@@ -7,14 +7,30 @@ Telegram bot that accepts `/note <text>`, stores notes in SQLite, and optionally
 - Saves notes to SQLite
 - Env-based configuration (no secrets in code)
 - Optional Notion API push bonus
+- Structured logging
+- Layered architecture (bot, services, repositories, db, config)
 
 ## Architecture (brief)
-- **Bot layer**: `python-telegram-bot` in `bot.py` using polling
-- **Persistence**: SQLite table `notes` with `id`, `chat_id`, `note_text`, `created_at`
-- **Provider API (optional)**: If `NOTION_API_KEY` and `NOTION_DATABASE_ID` are set, notes are also sent to Notion API
+- **Entrypoint**: `bot.py` (thin runner)
+- **Bot application**: `app/bot/application.py` wires dependencies and handlers
+- **Bot handlers**: `app/bot/handlers.py` handles `/start` and `/note`
+- **Service layer**: `app/services/note_service.py` orchestrates note save + optional provider push
+- **Provider client**: `app/services/notion_service.py` calls Notion API
+- **Repository layer**: `app/repositories/note_repository.py` handles SQL writes
+- **DB layer**: `app/db/database.py` manages SQLite connection/schema
+- **Config**: `app/core/config.py` reads env variables
+- **Logging**: `app/core/logging.py` provides setup and structured logging helper
 
 ## Project files
 - `bot.py`
+- `app/bot/application.py`
+- `app/bot/handlers.py`
+- `app/services/note_service.py`
+- `app/services/notion_service.py`
+- `app/repositories/note_repository.py`
+- `app/db/database.py`
+- `app/core/config.py`
+- `app/core/logging.py`
 - `requirements.txt`
 - `.env.example`
 
@@ -23,6 +39,8 @@ Telegram bot that accepts `/note <text>`, stores notes in SQLite, and optionally
 - `DATABASE_URL` (optional, default: `notes.db`)
 - `NOTION_API_KEY` (optional)
 - `NOTION_DATABASE_ID` (optional)
+- `LOG_LEVEL` (optional, default: `INFO`)
+- `SERVICE_NAME` (optional, default: `telegram-note-bot`)
 
 ## Run locally
 
@@ -34,13 +52,15 @@ source .venv/bin/activate
 
 2. Install dependencies:
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 3. Configure environment:
 ```bash
 export TELEGRAM_BOT_TOKEN="<your-bot-token>"
 export DATABASE_URL="notes.db"
+export LOG_LEVEL="INFO"
+export SERVICE_NAME="telegram-note-bot"
 # Optional Notion bonus
 export NOTION_API_KEY="<notion-api-key>"
 export NOTION_DATABASE_ID="<notion-db-id>"
