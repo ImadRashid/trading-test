@@ -9,19 +9,32 @@ Small FastAPI service that receives webhooks, validates a shared secret header, 
 - Idempotency via SHA-256 payload hash (`UNIQUE` in DB)
 - Clean JSON responses
 - `GET /health` endpoint
+- Structured logs (request-level + business events)
+- Centralized exception handling
 
 ## Architecture (brief)
-- **API layer**: FastAPI in `app.py`
-- **Validation**: `X-Signature` is compared with `WEBHOOK_SECRET` using constant-time `hmac.compare_digest`
-- **Storage**: SQLite table `webhooks` with columns:
-  - `id`
-  - `payload_hash` (unique)
-  - `payload_json`
-  - `created_at`
-- **Idempotency**: payload is canonicalized (stable JSON), hashed, and inserted. If hash already exists, response marks as duplicate and returns existing record info.
+- **Entrypoint**: `app/main.py` creates the FastAPI app and registers startup DB initialization.
+- **Routes**: `app/api/routes.py` exposes `/health` and `/webhook`.
+- **Service layer**: `app/services/webhook_service.py` handles payload normalization, hashing, and idempotent store logic.
+- **Repository layer**: `app/repositories/webhook_repository.py` encapsulates SQL operations.
+- **DB layer**: `app/db/database.py` manages SQLite connection and schema initialization.
+- **Config**: `app/core/config.py` reads environment variables (`WEBHOOK_SECRET`, `DATABASE_URL`).
+- **Logging**: `app/core/logging.py` provides logging setup and structured log formatting.
+- **Global middleware**: request logging with latency and `X-Request-ID` response header.
+- **Exception handling**: `app/api/exception_handlers.py` centralizes HTTP, validation, and unexpected error responses.
+- **Schemas**: `app/schemas/webhook.py` defines response model.
 
 ## Project files
-- `app.py`
+- `app.py` (thin compatibility entrypoint)
+- `app/main.py`
+- `app/api/routes.py`
+- `app/services/webhook_service.py`
+- `app/repositories/webhook_repository.py`
+- `app/db/database.py`
+- `app/core/config.py`
+- `app/core/logging.py`
+- `app/schemas/webhook.py`
+- `app/api/exception_handlers.py`
 - `requirements.txt`
 - `.env.example`
 
@@ -42,11 +55,12 @@ pip install -r requirements.txt
 ```bash
 export WEBHOOK_SECRET="super-secret"
 export DATABASE_URL="webhooks.db"
+export LOG_LEVEL="INFO"
 ```
 
 4. Start server:
 ```bash
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Test requests
