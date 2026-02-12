@@ -1,0 +1,18 @@
+services:
+  webhook-receiver:
+    build: .
+    image: webhook-receiver:latest
+    container_name: webhook-receiver
+    ports:
+      - "8000:8000"
+    environment:
+      WEBHOOK_SECRET: super-secret
+      DATABASE_URL: /data/webhooks.db
+      LOG_LEVEL: INFO
+      SERVICE_NAME: webhook-receiver
+    volumes:
+      - webhook_data:/data
+    restart: unless-stopped
+
+volumes:
+  webhook_data:

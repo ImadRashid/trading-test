@@ -3,6 +3,7 @@
 Small FastAPI service that receives webhooks, validates a shared secret header, stores payloads in SQLite, and prevents duplicate inserts using idempotency.
 
 ## Features
+
 - `POST /webhook` endpoint
 - Header validation with `X-Signature`
 - SQLite persistence
@@ -13,6 +14,7 @@ Small FastAPI service that receives webhooks, validates a shared secret header, 
 - Centralized exception handling
 
 ## Architecture (brief)
+
 - **Entrypoint**: `app/main.py` creates the FastAPI app and registers startup DB initialization.
 - **Routes**: `app/api/routes.py` exposes `/health` and `/webhook`.
 - **Service layer**: `app/services/webhook_service.py` handles payload normalization, hashing, and idempotent store logic.
@@ -25,6 +27,7 @@ Small FastAPI service that receives webhooks, validates a shared secret header, 
 - **Schemas**: `app/schemas/webhook.py` defines response model.
 
 ## Project files
+
 - `app.py` (thin compatibility entrypoint)
 - `app/main.py`
 - `app/api/routes.py`
@@ -41,17 +44,20 @@ Small FastAPI service that receives webhooks, validates a shared secret header, 
 ## Run locally
 
 1. Create and activate a virtual environment:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
 2. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 3. Set environment variables:
+
 ```bash
 export WEBHOOK_SECRET="super-secret"
 export DATABASE_URL="webhooks.db"
@@ -59,13 +65,62 @@ export LOG_LEVEL="INFO"
 ```
 
 4. Start server:
+
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+## Run with Docker
+
+### Build image
+
+```bash
+docker build -t webhook-receiver:latest .
+```
+
+### Run container
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e WEBHOOK_SECRET="super-secret" \
+  -e DATABASE_URL="/data/webhooks.db" \
+  -e LOG_LEVEL="INFO" \
+  -v webhook_data:/data \
+  webhook-receiver:latest
+```
+
+### Run with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+This uses `docker-compose.yml` and persists SQLite data in a named volume (`webhook_data`).
+
+## Deploy as Docker image
+
+- Build and tag:
+
+```bash
+docker build -t <registry>/<namespace>/webhook-receiver:<tag> .
+```
+
+- Push:
+
+```bash
+docker push <registry>/<namespace>/webhook-receiver:<tag>
+```
+
+- Deploy this image on any container platform (ECS, GKE, AKS, DigitalOcean Apps, Render, Fly.io, etc.) with env vars:
+  - `WEBHOOK_SECRET`
+  - `DATABASE_URL`
+  - `LOG_LEVEL`
+  - `SERVICE_NAME`
+
 ## Test requests
 
 ### 1) Valid request (stored)
+
 ```bash
 curl -X POST http://127.0.0.1:8000/webhook \
   -H "Content-Type: application/json" \
@@ -74,6 +129,7 @@ curl -X POST http://127.0.0.1:8000/webhook \
 ```
 
 Example response:
+
 ```json
 {
   "status": "stored",
@@ -84,9 +140,11 @@ Example response:
 ```
 
 ### 2) Same payload again (duplicate)
+
 Run the same curl command again.
 
 Example response:
+
 ```json
 {
   "status": "duplicate",
@@ -97,6 +155,7 @@ Example response:
 ```
 
 ### 3) Invalid signature
+
 ```bash
 curl -X POST http://127.0.0.1:8000/webhook \
   -H "Content-Type: application/json" \
@@ -105,11 +164,14 @@ curl -X POST http://127.0.0.1:8000/webhook \
 ```
 
 Returns `401` with:
+
 ```json
-{"detail":"Invalid signature"}
+{ "detail": "Invalid signature" }
 ```
 
 ## Deliverable notes
+
 This project is ready to submit as:
+
 - a GitHub repository link, or
 - a zipped folder including this code and README.
